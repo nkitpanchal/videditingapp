@@ -23,9 +23,7 @@ export default function Dashboard() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Fetch initial job status
     fetchJobs();
-    // Set up polling for job status updates
     const intervalId = setInterval(fetchJobs, 5000);
     return () => clearInterval(intervalId);
   }, []);
@@ -36,6 +34,8 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setJobs(data);
+      } else {
+        console.error('Failed to fetch jobs:', await response.text());
       }
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
@@ -62,20 +62,22 @@ export default function Dashboard() {
       });
 
       if (response.ok) {
+        const result = await response.json();
         toast({
           title: "Video uploaded successfully",
           description: "Your video is now being processed.",
         });
         setFile(null);
-        fetchJobs(); // Refresh job list
+        fetchJobs();
       } else {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${errorText}`);
       }
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: "Upload failed",
-        description: "There was an error uploading your video. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error uploading your video. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -85,7 +87,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md">
         <div className="p-4">
           <h1 className="text-2xl font-bold text-purple-600">VideoEdit Pro</h1>
@@ -109,9 +110,7 @@ export default function Dashboard() {
         </nav>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        {/* Header */}
         <header className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h2 className="text-2xl font-semibold text-gray-800">Welcome back, User!</h2>
@@ -128,9 +127,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Dashboard content */}
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          {/* Upload section */}
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Upload Video</CardTitle>
@@ -147,7 +144,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Job status section */}
           <Card>
             <CardHeader>
               <CardTitle>Job Status</CardTitle>
@@ -177,7 +173,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Popular tools */}
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Popular Tools</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

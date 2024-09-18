@@ -1,9 +1,88 @@
-import { Bell, ChevronDown, Play, Image, Mic, Download, Scissors, Layout, MessageSquare, User, FileText, Youtube } from 'lucide-react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { Bell, ChevronDown, Play, Image, Mic, Download, Scissors, Layout, MessageSquare, User, FileText, Youtube, Upload } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/components/ui/use-toast"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+interface Job {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  filename: string;
+  progress: number;
+}
 
 export default function Dashboard() {
+  const [file, setFile] = useState<File | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast()
+
+  useEffect(() => {
+    // Fetch initial job status
+    fetchJobs();
+    // Set up polling for job status updates
+    const intervalId = setInterval(fetchJobs, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch('http://64.227.164.159/jobs');
+      if (response.ok) {
+        const data = await response.json();
+        setJobs(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setFile(event.target.files[0]);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('video', file);
+
+    try {
+      const response = await fetch('http://64.227.164.159/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Video uploaded successfully",
+          description: "Your video is now being processed.",
+        });
+        setFile(null);
+        fetchJobs(); // Refresh job list
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your video. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -51,43 +130,55 @@ export default function Dashboard() {
 
         {/* Dashboard content */}
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          {/* Quick actions */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upload Video</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Input type="file" />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>New Project</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button>
-                    <Play className="mr-2 h-4 w-4" /> Start Creating
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Exports</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" /> View Exports
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {/* Upload section */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Upload Video</CardTitle>
+              <CardDescription>Select a video file to upload and process</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                <Input type="file" onChange={handleFileChange} accept="video/*" />
+                <Button onClick={handleUpload} disabled={!file || isUploading}>
+                  {isUploading ? 'Uploading...' : 'Upload'}
+                  <Upload className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Job status section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Status</CardTitle>
+              <CardDescription>Track the status of your video processing jobs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>File Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progress</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell>{job.filename}</TableCell>
+                      <TableCell>{job.status}</TableCell>
+                      <TableCell>
+                        <Progress value={job.progress} className="w-[60%]" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
           {/* Popular tools */}
-          <div>
+          <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Popular Tools</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[

@@ -16,6 +16,9 @@ interface Job {
   progress: number;
 }
 
+// Use an environment variable for the backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://64.227.164.159';
+
 export default function Dashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -30,7 +33,13 @@ export default function Dashboard() {
 
   const fetchJobs = async () => {
     try {
-      const response = await fetch('http://64.227.164.159/jobs');
+      const response = await fetch(`${BACKEND_URL}/jobs`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // This is important for cookies/session
+      });
       if (response.ok) {
         const data = await response.json();
         setJobs(data);
@@ -56,9 +65,10 @@ export default function Dashboard() {
     formData.append('video', file);
 
     try {
-      const response = await fetch('http://64.227.164.159/upload', {
+      const response = await fetch(`${BACKEND_URL}/upload`, {
         method: 'POST',
         body: formData,
+        credentials: 'include', // This is important for cookies/session
       });
 
       if (response.ok) {
